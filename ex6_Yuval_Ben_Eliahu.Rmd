@@ -1,0 +1,98 @@
+---
+title: "Ex_6_Yuval_Ben_Eliahu"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pheatmap)
+library(cluster)
+library(Rtsne)
+
+expFile=system.file("extdata",
+                    "leukemiaExpressionSubset.rds",
+                    package="compGenomRData")
+
+mat=readRDS(expFile)
+
+scaledMat <- scale(mat)
+
+logMat <- log2(mat)
+
+scaledLogMat <- scale(logMat)
+
+annotation_col = data.frame(
+                    LeukemiaType =substr(colnames(mat),1,3))
+rownames(annotation_col)=colnames(mat)
+```
+
+For the transformed and untransformed data sets used in the exercise above, use the silhouette for deciding number of clusters using hierarchical clustering. [Difficulty: Intermediate/Advanced]
+```{r}
+Ks=sapply(2:7,
+function(i)
+summary(silhouette(pam(t(mat),k=i)))$avg.width)
+plot(2:7,Ks,xlab="k",ylab="av. silhouette",type="b",
+pch=19)
+hcl_mat=hclust(dist(t(mat)))
+clu_mat=cutree(hcl_mat,k=4)
+table(clu_mat)
+
+Ks=sapply(2:7,
+function(i)
+summary(silhouette(pam(t(scaledMat),k=i)))$avg.width)
+plot(2:7,Ks,xlab="k",ylab="av. silhouette",type="b",
+pch=19)
+hcl_scaledMat=hclust(dist(t(scaledMat)))
+clu_scaledMat=cutree(hcl_scaledMat,k=4)
+table(clu_scaledMat)
+
+
+Ks=sapply(2:7,
+function(i)
+summary(silhouette(pam(t(logMat),k=i)))$avg.width)
+plot(2:7,Ks,xlab="k",ylab="av. silhouette",type="b",
+pch=19)
+hcl_logMat=hclust(dist(t(logMat)))
+clu_logMat=cutree(hcl_logMat,k=3)
+table(clu_logMat)
+
+
+Ks=sapply(2:7,
+function(i)
+summary(silhouette(pam(t(scaledLogMat),k=i)))$avg.width)
+plot(2:7,Ks,xlab="k",ylab="av. silhouette",type="b",
+pch=19)
+hcl_scaledLogMat=hclust(dist(t(scaledLogMat)))
+clu_scaledLogMat=cutree(hcl_scaledMat,k=4)
+table(clu_scaledLogMat)
+
+```
+
+In this exercise we use the Rtsne() function on the leukemia expression data set. Try to increase and decrease perplexity t-sne, and describe the observed changes in 2D plots. [Difficulty: Beginner]
+```{r}
+set.seed(30) 
+
+tsne_out5 <- Rtsne(t(mat),perplexity = 5) 
+plot(tsne_out5$Y,col=as.factor(annotation_col$LeukemiaType),pch=19)
+
+tsne_out10 <- Rtsne(t(mat),perplexity = 10) 
+plot(tsne_out10$Y,col=as.factor(annotation_col$LeukemiaType),pch=19)
+
+tsne_out19 <- Rtsne(t(mat),perplexity = 19) 
+plot(tsne_out19$Y,col=as.factor(annotation_col$LeukemiaType),pch=19)
+
+tsne_out1 <- Rtsne(t(mat),perplexity = 1) 
+plot(tsne_out1$Y,col=as.factor(annotation_col$LeukemiaType),pch=19)
+
+legend("bottomleft",
+legend=unique(annotation_col$LeukemiaType),
+fill =palette("default"),
+border=NA,box.col=NA)
+
+#With low perplexity of 1, the points form many close small clusters with high local variation. 
+#with high perplexity of 19 the points begin to merge into a few big clusters with high global variation.
+#with medium perplexity between 5 and 10 the clusters are mostly well defined and meaningful.
+```
