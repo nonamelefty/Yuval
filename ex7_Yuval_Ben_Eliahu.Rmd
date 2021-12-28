@@ -1,0 +1,87 @@
+---
+title: "Exercise 7"
+author: "Yuval Ben Eliahu"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Github:
+https://github.com/nonamelefty/Yuval.git
+
+### Classification
+
+```{r}
+library(compGenomRData)
+# get file paths
+fileLGGexp=system.file("extdata",
+                      "LGGrnaseq.rds",
+                      package="compGenomRData")
+fileLGGann=system.file("extdata",
+                      "patient2LGGsubtypes.rds",
+                      package="compGenomRData")
+# gene expression values
+gexp=readRDS(fileLGGexp)
+
+# patient annotation
+patient=readRDS(fileLGGann)
+
+```
+
+1. Our first task is to not use any data transformation and do classification. Run the k-NN classifier on the data without any transformation or scaling. What is the effect on classification accuracy for k-NN predicting the CIMP and noCIMP status of the patient? 
+
+classification accuracy is is decreased when we don't use data transformation and scaling (more false negatives and false positives).
+```{r}
+library(caret)
+gexp=log10(gexp+1)
+notgexp <- t(gexp)
+
+notgexp=merge(patient,notgexp,by="row.names")
+rownames(notgexp)=notgexp[,1]
+notgexp=notgexp[,-1]
+
+set.seed(3031) 
+intrain <- createDataPartition(y = notgexp[,1], p= 0.7)[[1]]
+training <- notgexp[intrain,]
+testing <- notgexp[-intrain,]
+
+knnFit=knn3(x=training[,-1],
+            y=training[,1], 
+            k=5)
+trainPred=predict(knnFit,testing[,-1])
+trainPred=predict(knnFit,training[,-1],type="class")
+
+confusionMatrix(data=training[,1],reference=trainPred)
+
+testPred=predict(knnFit,testing[,-1],type="class")
+
+confusionMatrix(data=testing[,1],reference=testPred)
+```
+
+### Regression
+
+```{r}
+# file path for CpG methylation and age
+fileMethAge=system.file("extdata",
+                      "CpGmeth2Age.rds",
+                      package="compGenomRData")
+
+# read methylation-age table
+ameth=readRDS(fileMethAge)
+```
+
+2. Run random forest regression and plot the importance metrics.
+```{r}
+library(matrixStats)
+ameth=ameth[,c(TRUE,matrixStats::colSds(as.matrix(ameth[,-1]))>0.1)]
+set.seed(18)
+par(mfrow=c(1,2))
+
+trctrl <- trainControl(method = "none")
+rfregFit <- train(Age~.,data = ameth,method = "ranger",trControl=trctrl,
+importance="permutation",tuneGrid = data.frame(mtry=50,min.node.size = 5,splitrule="variance"))
+
+plot(varImp(rfregFit),top=10)
+```
